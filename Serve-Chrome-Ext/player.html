@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity WebGL Launcher</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Unity WebGL Launcher</h1>
+            <div class="subtitle">Select your Unity WebGL build folder to launch</div>
+        </div>
+        <button id="select-folder" class="button">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            Select WebGL Folder
+        </button>
+        <div id="status" class="status"></div>
+    </div>
+    <script src="player.js"></script>
+</body>
+</html> 
