@@ -121,16 +121,25 @@ function getMimeType(fileName) {
     return mimeTypes[extension] || 'application/octet-stream';
 }
 
-// Function to display folder structure
-async function displayFolderStructure(dirHandle, parentElement, level = 0) {
+// Function to display folder structure with folder name at the top
+async function displayFolderStructure(dirHandle, parentElement, level = 0, rootName = null) {
+    if (level === 0 && rootName) {
+        const header = document.createElement('div');
+        header.className = 'folder-structure-header';
+        header.innerHTML = `
+            <svg class="icon folder-header-icon" viewBox="0 0 24 24">
+                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            <span class="folder-header-name">${rootName}</span>
+        `;
+        parentElement.appendChild(header);
+    }
     const container = document.createElement('div');
     container.className = 'folder-structure';
     container.style.marginLeft = `${level * 20}px`;
-    
     for await (const entry of dirHandle.values()) {
         const item = document.createElement('div');
         item.className = 'folder-item';
-        
         if (entry.kind === 'directory') {
             item.innerHTML = `
                 <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
@@ -150,7 +159,6 @@ async function displayFolderStructure(dirHandle, parentElement, level = 0) {
         }
         container.appendChild(item);
     }
-    
     parentElement.appendChild(container);
 }
 
@@ -191,14 +199,14 @@ async function pickFolder() {
         const structureContainer = document.createElement('div');
         structureContainer.className = 'folder-structure-container';
         structureContainer.style.margin = '20px 0';
-        structureContainer.style.padding = '10px';
+        structureContainer.style.padding = '15px';
         structureContainer.style.border = '1px solid #ccc';
-        structureContainer.style.borderRadius = '4px';
+        structureContainer.style.borderRadius = '8px';
         structureContainer.style.maxHeight = '300px';
         structureContainer.style.overflow = 'auto';
-        
-        await displayFolderStructure(dirHandle, structureContainer);
-        
+        // Get folder name
+        const folderName = dirHandle.name || 'Selected Folder';
+        await displayFolderStructure(dirHandle, structureContainer, 0, folderName);
         // Insert the structure before the play button
         const playButton = document.getElementById('play-button');
         playButton.parentNode.insertBefore(structureContainer, playButton);

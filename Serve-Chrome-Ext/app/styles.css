@@ -181,19 +181,58 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.folder-structure-header {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--primary-dark);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--primary-light);
+    background: none;
+}
+
+.folder-header-icon {
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    fill: var(--primary-color);
+}
+
+.folder-header-name {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.folder-structure-container {
+    background-color: var(--surface-color);
+    border: 1px solid var(--primary-light);
+    border-radius: var(--border-radius);
+    padding: 0 0 10px 0;
+    margin: 20px 0;
+    max-height: 320px;
+    overflow: auto;
+    box-shadow: var(--box-shadow);
+}
+
 .folder-structure {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 14px;
-    color: var(--text-secondary);
+    padding: 0 15px;
 }
 
 .folder-item {
     display: flex;
     align-items: center;
-    padding: 6px 8px;
+    padding: 10px 0 10px 0;
     cursor: default;
     border-radius: var(--border-radius);
     transition: var(--transition);
+    border-bottom: 1px solid #f0f4f8;
+}
+
+.folder-item:last-child {
+    border-bottom: none;
 }
 
 .folder-item .icon {
@@ -211,33 +250,4 @@ body {
 
 .folder-item:hover .icon {
     fill: var(--primary-dark);
-}
-
-.folder-structure-container {
-    background-color: var(--surface-color);
-    border: 1px solid var(--primary-light);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    margin: 20px 0;
-    max-height: 300px;
-    overflow: auto;
-    box-shadow: var(--box-shadow);
-}
-
-.folder-structure-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.folder-structure-container::-webkit-scrollbar-track {
-    background: var(--background-color);
-    border-radius: 4px;
-}
-
-.folder-structure-container::-webkit-scrollbar-thumb {
-    background: var(--primary-light);
-    border-radius: 4px;
-}
-
-.folder-structure-container::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-color);
 } 
