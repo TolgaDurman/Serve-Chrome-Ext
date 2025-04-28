@@ -121,6 +121,39 @@ function getMimeType(fileName) {
     return mimeTypes[extension] || 'application/octet-stream';
 }
 
+// Function to display folder structure
+async function displayFolderStructure(dirHandle, parentElement, level = 0) {
+    const container = document.createElement('div');
+    container.className = 'folder-structure';
+    container.style.marginLeft = `${level * 20}px`;
+    
+    for await (const entry of dirHandle.values()) {
+        const item = document.createElement('div');
+        item.className = 'folder-item';
+        
+        if (entry.kind === 'directory') {
+            item.innerHTML = `
+                <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                </svg>
+                ${entry.name}
+            `;
+            const subDirHandle = await dirHandle.getDirectoryHandle(entry.name);
+            await displayFolderStructure(subDirHandle, item, level + 1);
+        } else {
+            item.innerHTML = `
+                <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                    <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/>
+                </svg>
+                ${entry.name}
+            `;
+        }
+        container.appendChild(item);
+    }
+    
+    parentElement.appendChild(container);
+}
+
 // Handle folder selection
 async function pickFolder() {
     // Check for File System Access API support
@@ -147,8 +180,31 @@ async function pickFolder() {
         // Register this tab as having file access
         registerAsFileAccessTab();
         showStatus('Folder selected successfully! Click Play to launch the game.');
+        
+        // Clear previous folder structure if any
+        const existingStructure = document.querySelector('.folder-structure-container');
+        if (existingStructure) {
+            existingStructure.remove();
+        }
+        
+        // Create and display folder structure
+        const structureContainer = document.createElement('div');
+        structureContainer.className = 'folder-structure-container';
+        structureContainer.style.margin = '20px 0';
+        structureContainer.style.padding = '10px';
+        structureContainer.style.border = '1px solid #ccc';
+        structureContainer.style.borderRadius = '4px';
+        structureContainer.style.maxHeight = '300px';
+        structureContainer.style.overflow = 'auto';
+        
+        await displayFolderStructure(dirHandle, structureContainer);
+        
+        // Insert the structure before the play button
+        const playButton = document.getElementById('play-button');
+        playButton.parentNode.insertBefore(structureContainer, playButton);
+        
         // Show the Play button
-        document.getElementById('play-button').style.display = 'block';
+        playButton.style.display = 'block';
     } catch (err) {
         if (err && err.name === 'AbortError') {
             showStatus('Folder selection was cancelled.', true);
