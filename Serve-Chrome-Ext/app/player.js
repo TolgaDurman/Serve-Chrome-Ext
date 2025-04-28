@@ -1,3 +1,5 @@
+import { injectBmcButton } from './bmcButton.js';
+
 // Global directory handle that we can reference
 let globalDirectoryHandle = null;
 
@@ -297,4 +299,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         registerAsFileAccessTab();
         document.getElementById('play-button').style.display = 'block';
     }
+    // Inject Buy Me a Coffee button in top right
+    injectBmcButton(document.body, { wrapperClass: 'bmc-topright' });
 });

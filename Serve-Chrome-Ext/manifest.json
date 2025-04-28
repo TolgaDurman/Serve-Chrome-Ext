@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Unity WebGL Launcher",
+  "name": "Siesta Launcher",
   "version": "1.0",
   "description": "Launches Unity WebGL builds from local folders",
   "content_security_policy": {
