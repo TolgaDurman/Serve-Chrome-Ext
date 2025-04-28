@@ -12,7 +12,6 @@ A Chrome extension that enables local execution of Unity WebGL builds by providi
 - 🔄 **Real-time Updates**: Automatically detects changes in selected folders
 - 🛠 **Error Handling**: Friendly error messages and troubleshooting guidance
 - 📁 **Folder Structure Visualization**: Preview selected folder contents before launch
-- ☕ **Support Integration**: Includes "Buy Me a Coffee" button for developer support
 
 ## Requirements
 
