@@ -8,19 +8,8 @@ const extractedScripts = {};
 function registerExtractedScript(filename, content) {
   extractedScripts[filename] = content;
 }
-function getUrlParameter(url, sParam) {
-  var sPageURL = url.search.substring(1);
-  var sURLVariables = sPageURL.split("&");
-  for (var i = 0; i < sURLVariables.length; i++) {
-    var sParameterName = sURLVariables[i].split("=");
-    if (sParameterName[0] == sParam) {
-      return sParameterName[1];
-    }
-  }
-}
 // Listen for fetch events to our virtual file server
 self.addEventListener("fetch", (event) => {
-  console.log("Fetch event for:", event.request.url);
   const url = new URL(event.request.url);
   // Check if this is a request for our Unity game files
   if (url.pathname.startsWith("/app/")) {
@@ -143,7 +132,7 @@ async function sendMessageToFileAccessTab(filePath) {
       );
 
       if (!playerTab) {
-        reject(new Error("Cannot find the tab with file access"));
+        chrome.tabs.create({ url: chrome.runtime.getURL("app/rejected.html") });
         return;
       }
 
@@ -172,7 +161,7 @@ async function sendMessageToFileAccessTab(filePath) {
       setTimeout(() => {
         chrome.runtime.onMessage.removeListener(messageListener);
         reject(new Error(`Timeout while requesting file: ${filePath}`));
-      }, 10000); // 10 second timeout
+      }, 20000); // 10 second timeout
     });
   });
 }
