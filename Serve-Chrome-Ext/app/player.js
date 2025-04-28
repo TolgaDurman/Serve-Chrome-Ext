@@ -1,10 +1,33 @@
 // Global directory handle that we can reference
 let globalDirectoryHandle = null;
 
+// Try to load last used directory handle from storage
+async function loadLastDirectoryHandle() {
+    if ('storage' in navigator && 'getDirectory' in navigator.storage) {
+        try {
+            const dirHandle = await navigator.storage.getDirectory();
+            if (dirHandle) {
+                globalDirectoryHandle = dirHandle;
+                return true;
+            }
+        } catch (e) {
+            // Ignore if not available
+        }
+    }
+    return false;
+}
+
+// Save directory handle for later use (if supported)
+async function saveDirectoryHandle(dirHandle) {
+    // This is a placeholder for future implementation (e.g., using IndexedDB)
+    // Chrome's File System Access API does not yet allow persistent storage of directory handles without user interaction
+}
+
 // Status message handler
 function showStatus(message, isError = false) {
     const status = document.getElementById('status');
     const button = document.getElementById('select-folder');
+    const playButton = document.getElementById('play-button');
     
     if (message === 'loading') {
         button.innerHTML = '<div class="loading"></div> Loading...';
@@ -98,41 +121,57 @@ function getMimeType(fileName) {
     return mimeTypes[extension] || 'application/octet-stream';
 }
 
-// Handle folder selection and Unity WebGL launch
-async function pickFolderAndLaunchUnity() {
+// Handle folder selection
+async function pickFolder() {
+    // Check for File System Access API support
+    if (!window.showDirectoryPicker) {
+        showStatus('Your browser does not support the File System Access API. Please use the latest version of Chrome.', true);
+        return;
+    }
     try {
         showStatus('loading');
-        
         // Show the directory picker to let the user select a folder
         const dirHandle = await window.showDirectoryPicker();
-        
+        if (!dirHandle) {
+            showStatus('No folder selected. Please select a Unity WebGL build folder.', true);
+            return;
+        }
         // Check if the selected folder contains a Unity WebGL build (index.html)
         const hasIndexHtml = await checkForIndexHtml(dirHandle);
-        
         if (!hasIndexHtml) {
             showStatus('No index.html found in the selected folder. Please select a valid Unity WebGL build folder.', true);
             return;
         }
-        
         // Save the directory handle for later use
         globalDirectoryHandle = dirHandle;
-        
         // Register this tab as having file access
         registerAsFileAccessTab();
-        
-        // Launch the Unity game in a new tab
-        chrome.runtime.sendMessage({action: 'launchUnity'}, function(response) {
-            if (response && response.success) {
-                showStatus('Unity WebGL game launched successfully! Keep this tab open to provide file access.');
-            } else {
-                showStatus('Failed to launch Unity WebGL game.', true);
-            }
-        });
-        
+        showStatus('Folder selected successfully! Click Play to launch the game.');
+        // Show the Play button
+        document.getElementById('play-button').style.display = 'block';
     } catch (err) {
-        console.error('Error:', err);
-        showStatus(err.message || 'An error occurred while processing the WebGL build.', true);
+        if (err && err.name === 'AbortError') {
+            showStatus('Folder selection was cancelled.', true);
+        } else {
+            console.error('Error:', err);
+            showStatus(err.message || 'An error occurred while processing the WebGL build.', true);
+        }
     }
+}
+
+// Handle game launch
+function launchUnity() {
+    if (!globalDirectoryHandle) {
+        showStatus('Please select a folder first.', true);
+        return;
+    }
+    chrome.runtime.sendMessage({action: 'launchUnity'}, function(response) {
+        if (response && response.success) {
+            showStatus('Unity WebGL game launched successfully! Keep this tab open to provide file access.');
+        } else {
+            showStatus('Failed to launch Unity WebGL game.', true);
+        }
+    });
 }
 
 // Listen for file requests
@@ -140,16 +179,13 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.action === 'getFile' && globalDirectoryHandle) {
         // Send immediate response to keep the message channel open
         sendResponse({processing: true});
-        
         try {
             const file = await getFileFromPath(globalDirectoryHandle, message.filePath);
             const contentType = file.type || getMimeType(file.name);
-            
             // Determine if this is a text or binary file
             const isText = contentType.startsWith('text/') || 
                           contentType === 'application/javascript' || 
                           contentType === 'application/json';
-            
             let content;
             if (isText) {
                 content = await file.text();
@@ -163,7 +199,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 }
                 content = btoa(binary);
             }
-            
             chrome.runtime.sendMessage({
                 response: true,
                 success: true,
@@ -180,17 +215,22 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 error: error.message
             });
         }
-        
         return true;
     }
 });
 
-// Add event listener for the select folder button and register as file access tab
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('select-folder').addEventListener('click', pickFolderAndLaunchUnity);
-    
-    // Check if we have previously stored directory handle
+// Add event listeners
+document.addEventListener('DOMContentLoaded', async function() {
+    document.getElementById('select-folder').addEventListener('click', pickFolder);
+    document.getElementById('play-button').addEventListener('click', launchUnity);
+    // Check for File System Access API support on load
+    if (!window.showDirectoryPicker) {
+        showStatus('Your browser does not support the File System Access API. Please use the latest version of Chrome.', true);
+        document.getElementById('select-folder').disabled = true;
+        return;
+    }
     if (globalDirectoryHandle) {
         registerAsFileAccessTab();
+        document.getElementById('play-button').style.display = 'block';
     }
 });

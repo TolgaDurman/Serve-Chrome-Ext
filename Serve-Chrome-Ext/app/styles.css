@@ -2,14 +2,16 @@
     --primary-color: #2196F3;
     --primary-dark: #1976D2;
     --primary-light: #BBDEFB;
-    --background-color: #f8f9fa;
+    --background-color: #f5f5f5;
     --surface-color: #ffffff;
     --text-primary: #212121;
     --text-secondary: #757575;
     --error-color: #f44336;
     --success-color: #4CAF50;
+    --text-color: #333;
+    --card-background: #ffffff;
     --border-radius: 8px;
-    --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
 }
 
@@ -21,62 +23,62 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
     background-color: var(--background-color);
-    color: var(--text-primary);
-    min-width: 320px;
-    padding: 24px;
-    line-height: 1.5;
+    color: var(--text-color);
+    min-height: 100vh;
 }
 
 .container {
-    max-width: 400px;
+    max-width: 600px;
+    min-width: 200px;
     margin: 0 auto;
-    background-color: var(--surface-color);
-    padding: 24px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    padding: 20px;
 }
 
 .header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 30px;
 }
 
-h1 {
+.header h1 {
     color: var(--primary-color);
+    margin: 0;
     font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 8px;
 }
 
 .subtitle {
-    color: var(--text-secondary);
+    color: #666;
     font-size: 14px;
-    margin-bottom: 24px;
+    margin-top: 8px;
 }
 
 .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background-color: var(--primary-color);
     color: white;
     border: none;
     padding: 12px 24px;
     border-radius: var(--border-radius);
+    cursor: pointer;
     font-size: 16px;
     font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition);
-    box-shadow: var(--box-shadow);
+    transition: background-color 0.3s ease;
+    text-decoration: none;
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    margin: 10px 0;
 }
 
-.button:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.play-button {
+    background-color: var(--success-color);
+}
+
+.play-button:hover {
+    background-color: #388E3C;
 }
 
 .button:active {
@@ -90,29 +92,73 @@ h1 {
 }
 
 .status {
-    margin-top: 16px;
-    padding: 12px;
+    margin-top: 20px;
+    padding: 15px;
     border-radius: var(--border-radius);
-    display: none;
-    font-size: 14px;
-    animation: fadeIn 0.3s ease;
+    background-color: var(--card-background);
+    box-shadow: var(--box-shadow);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Error Page Styles */
+.error-content {
+    text-align: center;
+    background-color: var(--card-background);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
 }
 
-.error {
-    background-color: #ffebee;
+.error-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.error-message {
     color: var(--error-color);
-    border-left: 4px solid var(--error-color);
+    font-size: 18px;
+    margin-bottom: 20px;
 }
 
-.success {
-    background-color: #e8f5e9;
-    color: var(--success-color);
-    border-left: 4px solid var(--success-color);
+.troubleshooting {
+    text-align: left;
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #fff3f3;
+    border-radius: var(--border-radius);
+}
+
+.troubleshooting h3 {
+    margin-top: 0;
+    color: var(--error-color);
+}
+
+.troubleshooting ul {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.troubleshooting li {
+    margin-bottom: 8px;
+}
+
+.actions {
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .header h1 {
+        font-size: 20px;
+    }
+    
+    .button {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
 }
 
 .icon {
