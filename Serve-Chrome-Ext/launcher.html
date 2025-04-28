@@ -15,7 +15,8 @@
             <p>Loading Unity WebGL game...</p>
             <div id="error-message"></div>
         </div>
-        <iframe id="unity-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-top-navigation allow-downloads" allow="autoplay; fullscreen *"></iframe>
+        <!-- Modified sandbox attributes to avoid security warning while maintaining necessary permissions -->
+        <iframe id="unity-frame" sandbox="allow-scripts allow-forms allow-popups allow-pointer-lock allow-top-navigation allow-downloads" allow="autoplay; fullscreen *"></iframe>
     </div>
 </body>
 </html>

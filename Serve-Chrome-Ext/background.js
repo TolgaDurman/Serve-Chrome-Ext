@@ -27,7 +27,6 @@ async function handleUnityFileRequest(url) {
   // If it's the root, serve index.html
   if (filePath === '' || filePath === '/') {
     filePath = 'index.html';
-    console.log('Serving index.html');
   }
   
   // Check if this is a request for an extracted script
@@ -50,9 +49,9 @@ async function handleUnityFileRequest(url) {
       if (response.isText) {
         content = response.content;
         
-        // If this is HTML content, modify it to move inline scripts to external files
+        // If this is HTML content, modify it to extract inline scripts
         if (response.contentType === 'text/html') {
-          content = modifyHtmlContent(content, filePath);
+          content = modifyHtmlContentWithRegex(content, filePath);
         }
       } else {
         // Convert base64 back to binary
@@ -82,25 +81,34 @@ async function handleUnityFileRequest(url) {
   }
 }
 
-// Function to modify HTML content to handle CSP restrictions
-function modifyHtmlContent(htmlContent, filePath) {
-  if (filePath === 'index.html') {
-    const scriptPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-    let modifiedHtml = htmlContent;
-
-    modifiedHtml = modifiedHtml.replace(scriptPattern, (match, scriptContent) => {
-      if (!scriptContent.trim() || match.includes('src=')) {
-        return match;
-      }
-
-      const updatedScriptPath = match.replace(/src="(.*?)"/, 'src="/unity-game/$1"');
-      return updatedScriptPath;
-    });
-
-    return modifiedHtml;
-  }
-
-  return htmlContent;
+// Function to modify HTML content using regex instead of DOM API
+function modifyHtmlContentWithRegex(htmlContent, filePath) {
+  let modifiedContent = htmlContent;
+  let scriptCounter = 0;
+  const baseDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/') + 1) : '';
+  
+  // Regular expression to find inline scripts (scripts without src attribute)
+  // This regex looks for <script> tags that don't have a src attribute
+  const inlineScriptRegex = /<script(?!\s+src=)([\s\S]*?)>([\s\S]*?)<\/script>/gi;
+  
+  // Replace all inline scripts with external script references
+  modifiedContent = modifiedContent.replace(inlineScriptRegex, (match, attributes, content) => {
+    // Skip empty scripts
+    if (!content.trim()) {
+      return match;
+    }
+    
+    // Generate a unique filename for this script
+    const scriptFileName = `${baseDir}_extracted_script_${scriptCounter++}.js`;
+    
+    // Register the extracted script content
+    registerExtractedScript(scriptFileName, content);
+    
+    // Return a script tag with src attribute instead of inline content
+    return `<script${attributes} src="${chrome.runtime.getURL('unity-game/' + scriptFileName)}"></script>`;
+  });
+  
+  return modifiedContent;
 }
 
 // Function to send a message to the tab with file access
