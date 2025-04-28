@@ -21,7 +21,7 @@ A Chrome extension that enables local execution of Unity WebGL builds by providi
 
 ## Installation
 
-1. Clone/download this repository
+1. Clone/download this repository or download the [.zip](https://github.com/TolgaDurman/Siesta-Launcher/releases)
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode" (toggle in top-right corner)
 4. Click "Load unpacked" and select the repository folder
