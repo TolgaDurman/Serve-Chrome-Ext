@@ -2,7 +2,7 @@
 
 A Chrome extension that enables local execution of Unity WebGL builds by providing folder access and virtual file serving.
 
-![Demo](screenshot.png) *(Add a screenshot of the interface here)*
+![Preview](https://github.com/user-attachments/assets/9276f664-3d0d-4ce1-a4a2-824a69bdad91)
 
 ## Features
 
