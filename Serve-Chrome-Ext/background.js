@@ -27,6 +27,7 @@ async function handleUnityFileRequest(url) {
   // If it's the root, serve index.html
   if (filePath === '' || filePath === '/') {
     filePath = 'index.html';
+    console.log('Serving index.html');
   }
   
   // Check if this is a request for an extracted script
@@ -83,47 +84,22 @@ async function handleUnityFileRequest(url) {
 
 // Function to modify HTML content to handle CSP restrictions
 function modifyHtmlContent(htmlContent, filePath) {
-  // If this is the main index.html file from Unity build
   if (filePath === 'index.html') {
-    // Try to find and extract inline scripts to be served as separate files
-    // This is a simple implementation - in practice, this would need to be more robust
     const scriptPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-    let scriptCounter = 0;
     let modifiedHtml = htmlContent;
-    
-    // Keep track of extracted scripts to register them
-    const newExtractedScripts = {};
-    
-    // Replace inline scripts with references to external scripts
+
     modifiedHtml = modifiedHtml.replace(scriptPattern, (match, scriptContent) => {
-      // Skip if it's an empty script or just has whitespace
-      if (!scriptContent.trim()) {
+      if (!scriptContent.trim() || match.includes('src=')) {
         return match;
       }
-      
-      // Skip if it's already a script with src attribute
-      if (match.includes('src=')) {
-        return match;
-      }
-      
-      // Create a unique filename for this script
-      const scriptFilename = `unity-script-${scriptCounter++}.js`;
-      
-      // Store the script content to serve it later
-      newExtractedScripts[scriptFilename] = scriptContent;
-      
-      // Replace with a reference to the external script
-      return `<script src="unity-game/${scriptFilename}"></script>`;
+
+      const updatedScriptPath = match.replace(/src="(.*?)"/, 'src="/unity-game/$1"');
+      return updatedScriptPath;
     });
-    
-    // Register the extracted scripts to be served
-    for (const [filename, content] of Object.entries(newExtractedScripts)) {
-      registerExtractedScript(filename, content);
-    }
-    
+
     return modifiedHtml;
   }
-  
+
   return htmlContent;
 }
 
