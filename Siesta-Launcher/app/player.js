@@ -3,28 +3,6 @@ import { injectBmcButton } from './bmcButton.js';
 // Global directory handle that we can reference
 let globalDirectoryHandle = null;
 
-// Try to load last used directory handle from storage
-async function loadLastDirectoryHandle() {
-    if ('storage' in navigator && 'getDirectory' in navigator.storage) {
-        try {
-            const dirHandle = await navigator.storage.getDirectory();
-            if (dirHandle) {
-                globalDirectoryHandle = dirHandle;
-                return true;
-            }
-        } catch (e) {
-            // Ignore if not available
-        }
-    }
-    return false;
-}
-
-// Save directory handle for later use (if supported)
-async function saveDirectoryHandle(dirHandle) {
-    // This is a placeholder for future implementation (e.g., using IndexedDB)
-    // Chrome's File System Access API does not yet allow persistent storage of directory handles without user interaction
-}
-
 // Status message handler
 function showStatus(message, isError = false) {
     const status = document.getElementById('status');
