@@ -201,136 +201,187 @@ function modifyHtmlContentWithRegex(htmlContent, filePath) {
   return modifiedContent;
 }
 
-// Modified function to properly close all database connections before deletion
+// New implementation focusing on the blocked-event issue
 async function deleteAllIndexedDBs() {
   try {
-    // First, get all database names
+    if(db){
+      db.close();
+      db = null;
+    }
     const databases = await indexedDB.databases();
     console.log("Databases to delete:", databases);
     
-    // Track open connections to close them first
-    const openConnections = {};
-    
-    // Close any open connections first
-    for (const dbInfo of databases) {
-      try {
-        // Open the database to get a reference to it
-        const openRequest = indexedDB.open(dbInfo.name);
-        
-        await new Promise((resolve, reject) => {
-          openRequest.onerror = (event) => {
-            console.error(`Error opening database ${dbInfo.name} for closure:`, event.target.error);
-            resolve(); // Continue with others even if this fails
-          };
-          
-          openRequest.onsuccess = (event) => {
-            const db = event.target.result;
-            // Store reference to close later
-            openConnections[dbInfo.name] = db;
-            console.log(`Successfully opened connection to ${dbInfo.name} for closure`);
-            resolve();
-          };
-          
-          // Handle blocked events
-          openRequest.onblocked = (event) => {
-            console.warn(`Database ${dbInfo.name} blocked, may have open connections`, event);
-            resolve(); // Continue with others
-          };
-        });
-      } catch (err) {
-        console.error(`Error preparing database ${dbInfo.name} for deletion:`, err);
-      }
+    if (databases.length === 0) {
+      console.log("No databases to delete");
+      return true;
     }
     
-    // Close all connections we've opened
-    Object.values(openConnections).forEach(db => {
+    // First, attempt to close any existing connections from our own code
+    if (typeof db !== 'undefined' && db) {
       try {
-        console.log(`Closing connection to database: ${db.name}`);
+        console.log("Closing our known DB connection");
         db.close();
-      } catch (err) {
-        console.error(`Error closing database ${db.name}:`, err);
-      }
-    });
-    
-    // Now try to delete each database
-    for (const dbInfo of databases) {
-      try {
-        await new Promise((resolve, reject) => {
-          const deleteRequest = indexedDB.deleteDatabase(dbInfo.name);
-          
-          deleteRequest.onsuccess = (event) => {
-            console.log(`Successfully deleted database: ${dbInfo.name}`);
-            resolve();
-          };
-          
-          deleteRequest.onerror = (event) => {
-            console.error(`Error deleting database: ${dbInfo.name}`, event.target.error);
-            resolve(); // Continue with others even if this one fails
-          };
-          
-          deleteRequest.onblocked = (event) => {
-            console.warn(`Database ${dbInfo.name} deletion blocked, trying alternative approach`, event);
-            
-            // Alternative approach: try to clear all object stores instead of deleting
-            try {
-              const openRequest = indexedDB.open(dbInfo.name);
-              openRequest.onsuccess = (evt) => {
-                const db = evt.target.result;
-                try {
-                  // Get all object store names
-                  const storeNames = Array.from(db.objectStoreNames);
-                  if (storeNames.length > 0) {
-                    const tx = db.transaction(storeNames, 'readwrite');
-                    storeNames.forEach(storeName => {
-                      try {
-                        console.log(`Clearing object store: ${storeName}`);
-                        tx.objectStore(storeName).clear();
-                      } catch (e) {
-                        console.error(`Error clearing store ${storeName}:`, e);
-                      }
-                    });
-                    tx.oncomplete = () => {
-                      console.log(`Cleared all stores in ${dbInfo.name}`);
-                      db.close();
-                      resolve();
-                    };
-                    tx.onerror = (e) => {
-                      console.error(`Transaction error:`, e);
-                      db.close();
-                      resolve();
-                    };
-                  } else {
-                    console.log(`No object stores in ${dbInfo.name}`);
-                    db.close();
-                    resolve();
-                  }
-                } catch (e) {
-                  console.error(`Error in alternative clearing:`, e);
-                  if (db) db.close();
-                  resolve();
-                }
-              };
-              openRequest.onerror = () => {
-                console.error(`Could not open database in alternative approach`);
-                resolve();
-              };
-            } catch (err) {
-              console.error(`Failed alternative approach:`, err);
-              resolve();
-            }
-          };
-        });
-      } catch (err) {
-        console.error(`Error in database deletion process for ${dbInfo.name}:`, err);
+        db = null;
+      } catch (e) {
+        console.warn("Error closing known DB:", e);
       }
     }
     
-    console.log("IndexedDB deletion process completed");
-    return true;
+    // This part is crucial: we need to wait for "versionchange" events to complete
+    // by listening to them in any context that might have the DB open
+    
+    // Broadcast a message to all contexts to close their connections
+    try {
+      // Send message to all tabs to close their DB connections
+      const tabs = await chrome.tabs.query({});
+      for (const tab of tabs) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, { action: "closeDBConnections" });
+          console.log("Sent close connection message to tab:", tab.id);
+        } catch (e) {
+          // Ignore errors for tabs that don't have content scripts
+          console.log("Could not send to tab:", tab.id);
+        }
+      }
+      
+      // Also notify popup if open
+      try {
+        chrome.runtime.sendMessage({ action: "closeDBConnections" });
+      } catch (e) {
+        console.log("Could not send to popup/others");
+      }
+      
+      // Give time for connections to close
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (e) {
+      console.warn("Error broadcasting close message:", e);
+    }
+
+    // Now try to delete each database with robust error handling
+    const results = await Promise.all(databases.map(async (dbInfo) => {
+      return await new Promise((resolve) => {
+        console.log(`Attempting to delete database: ${dbInfo.name}`);
+        
+        // First try: regular deletion
+        const deleteRequest = indexedDB.deleteDatabase(dbInfo.name);
+        
+        deleteRequest.onsuccess = () => {
+          console.log(`Successfully deleted database: ${dbInfo.name}`);
+          resolve(true);
+        };
+        
+        deleteRequest.onerror = (event) => {
+          console.error(`Error deleting database: ${dbInfo.name}`, event.target.error);
+          resolve(false);
+        };
+        
+        deleteRequest.onblocked = async (event) => {
+          console.warn(`Database ${dbInfo.name} deletion blocked, trying alternative approach`);
+          
+          // ALTERNATIVE APPROACH 1: Try to open and clear all stores
+          try {
+            const altResult = await clearAllObjectStores(dbInfo.name);
+            resolve(altResult);
+          } catch (e) {
+            console.error("Alternative approach failed:", e);
+            resolve(false);
+          }
+        };
+      });
+    }));
+    
+    // Check if all deletions were successful
+    const allSuccessful = results.every(result => result === true);
+    console.log(`IndexedDB deletion process completed. All successful: ${allSuccessful}`);
+    
+    return allSuccessful;
   } catch (error) {
     console.error("Error in deleteAllIndexedDBs:", error);
     return false;
   }
+}
+
+// New helper function to clear all object stores in a database
+async function clearAllObjectStores(dbName) {
+  return new Promise((resolve, reject) => {
+    let open = indexedDB.open(dbName);
+    let success = false;
+    
+    open.onsuccess = function(event) {
+      let db = event.target.result;
+      try {
+        // Use the database version to ensure we control all connections
+        const version = db.version;
+        const storeNames = Array.from(db.objectStoreNames);
+        console.log(`DB ${dbName} has stores:`, storeNames);
+        
+        // Close this connection
+        db.close();
+        
+        if (storeNames.length > 0) {
+          // Reopen with a higher version to kick out other connections
+          let reopenRequest = indexedDB.open(dbName, version + 1);
+          
+          reopenRequest.onupgradeneeded = function(event) {
+            let db = event.target.result;
+            console.log(`Upgrade called on ${dbName}, can now clear data`);
+            
+            // Delete each object store
+            for (let storeName of storeNames) {
+              try {
+                console.log(`Deleting store: ${storeName}`);
+                db.deleteObjectStore(storeName);
+              } catch (e) {
+                console.warn(`Couldn't delete store ${storeName}:`, e);
+              }
+            }
+            success = true;
+          };
+          
+          reopenRequest.onsuccess = function(event) {
+            let db = event.target.result;
+            console.log(`Reopened ${dbName} at higher version`);
+            db.close();
+            
+            // Now attempt deletion again
+            setTimeout(() => {
+              let finalDeleteRequest = indexedDB.deleteDatabase(dbName);
+              finalDeleteRequest.onsuccess = () => {
+                console.log(`Finally deleted ${dbName} after clearing`);
+                resolve(true);
+              };
+              finalDeleteRequest.onerror = (e) => {
+                console.error(`Still couldn't delete ${dbName}:`, e);
+                resolve(success); // At least we cleared it
+              };
+            }, 100);
+          };
+          
+          reopenRequest.onerror = function(event) {
+            console.error(`Error reopening ${dbName}:`, event.target.error);
+            // Try deleting anyway
+            let finalTryRequest = indexedDB.deleteDatabase(dbName);
+            finalTryRequest.onsuccess = () => resolve(true);
+            finalTryRequest.onerror = () => resolve(false);
+          };
+        } else {
+          // No stores, try delete again
+          const finalRequest = indexedDB.deleteDatabase(dbName);
+          finalRequest.onsuccess = () => resolve(true);
+          finalRequest.onerror = () => resolve(false);
+        }
+      } catch (e) {
+        console.error(`Error clearing object stores for ${dbName}:`, e);
+        db.close();
+        reject(e);
+      }
+    };
+    
+    open.onerror = function(event) {
+      console.error(`Could not open database ${dbName} for clearing:`, event.target.error);
+      reject(event.target.error);
+    };
+  });
 }
 
 // Update the clearDB function to be more robust - detect and close connections
@@ -383,15 +434,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     sendResponse({ success: true });
     return true;
-  } else if (message.action === "clearDB") {
-    clearDB()
-      .then(() => {
-        sendResponse({ success: true });
-      })
-      .catch((error) => {
-        sendResponse({ success: false, error: error.message });
-      });
-    return true;
   } else if (message.action === "clearAllStorage") {
     // First close our own DB connections
     if (db) {
@@ -417,6 +459,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error("Error clearing all storage:", error);
       sendResponse({ success: false, error: error.message });
     });
+    return true;
+  } else if (message.action === "closeDBConnections") {
+    // Close any open database connections in this context
+    if (typeof db !== 'undefined' && db) {
+      try {
+        console.log("Background script closing DB connection on request");
+        db.close();
+        db = null;
+        sendResponse({ success: true });
+      } catch (e) {
+        console.warn("Error closing DB in background:", e);
+        sendResponse({ success: false, error: e.message });
+      }
+    } else {
+      sendResponse({ success: true, message: "No open connections" });
+    }
     return true;
   }
 
@@ -465,4 +523,19 @@ async function clearLocalStorage() {
     throw error;
   }
 }
+
+// Add this to the service worker's global scope to catch and handle versionchange events
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CLOSE_INDEXEDDB') {
+    console.log("Service worker received close request");
+    if (typeof db !== 'undefined' && db) {
+      try {
+        db.close();
+        db = null;
+      } catch (e) {
+        console.warn("Error in worker closing DB:", e);
+      }
+    }
+  }
+});
 

@@ -78,30 +78,6 @@ function showStatus(message, isError = false) {
   }
 }
 
-// Register this tab as having file access
-function registerAsFileAccessTab() {
-  chrome.runtime.sendMessage({
-    action: "registerFileAccessTab",
-  });
-}
-
-// Check if a directory contains index.html
-async function checkForIndexHtml(dirHandle, path = "") {
-  for await (const entry of dirHandle.values()) {
-    if (entry.kind === "file" && entry.name.toLowerCase() === "index.html") {
-      return true;
-    } else if (entry.kind === "directory") {
-      const subDirHandle = await dirHandle.getDirectoryHandle(entry.name);
-      const subResult = await checkForIndexHtml(
-        subDirHandle,
-        path ? `${path}/${entry.name}` : entry.name
-      );
-      if (subResult) return true;
-    }
-  }
-  return false;
-}
-
 // Get MIME type based on file extension
 function getMimeType(fileName) {
   const extension = fileName.split(".").pop().toLowerCase();
@@ -461,6 +437,10 @@ async function updateStorageDisplay() {
 async function clearAllStorage() {
     try {
       // First clear any client-side storage we can access directly
+      if(db){
+        db.close();
+        db = null;
+      }
       localStorage.clear();
       sessionStorage.clear();
       
