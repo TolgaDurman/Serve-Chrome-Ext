@@ -1,7 +1,53 @@
 import { injectBmcButton } from './bmcButton.js';
 
-// Global directory handle that we can reference
-let globalDirectoryHandle = null;
+// IndexedDB setup
+const DB_NAME = 'webglFilesDB';
+const STORE_NAME = 'files';
+let db = null;
+
+// Initialize IndexedDB
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            db = request.result;
+            resolve();
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
+        };
+    });
+}
+
+// Store file in IndexedDB
+function storeFile(fileName, content) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(content, fileName);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Get file from IndexedDB
+function getFile(fileName) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(fileName);
+        
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
 
 // Status message handler
 function showStatus(message, isError = false) {
@@ -18,7 +64,7 @@ function showStatus(message, isError = false) {
             <svg class="icon" viewBox="0 0 24 24">
                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
             </svg>
-            Select WebGL Folder
+            Upload WebGL Files
         `;
         button.disabled = false;
         
@@ -53,30 +99,6 @@ async function checkForIndexHtml(dirHandle, path = '') {
     return false;
 }
 
-// Get file from directory handle by path
-async function getFileFromPath(dirHandle, path) {
-    const parts = path.split('/').filter(part => part !== '');
-    
-    // Navigate to the correct subdirectory
-    let currentHandle = dirHandle;
-    for (let i = 0; i < parts.length - 1; i++) {
-        try {
-            currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
-        } catch (err) {
-            throw new Error(`Directory not found: ${parts[i]}`);
-        }
-    }
-    
-    // Get the file from the current directory
-    try {
-        const fileName = parts[parts.length - 1];
-        const fileHandle = await currentHandle.getFileHandle(fileName);
-        return await fileHandle.getFile();
-    } catch (err) {
-        throw new Error(`File not found: ${parts[parts.length - 1]}`);
-    }
-}
-
 // Get MIME type based on file extension
 function getMimeType(fileName) {
     const extension = fileName.split('.').pop().toLowerCase();
@@ -101,81 +123,106 @@ function getMimeType(fileName) {
     return mimeTypes[extension] || 'application/octet-stream';
 }
 
-// Function to display folder structure with folder name at the top
-async function displayFolderStructure(dirHandle, parentElement, level = 0, rootName = null) {
-    if (level === 0 && rootName) {
-        const header = document.createElement('div');
-        header.className = 'folder-structure-header';
-        header.innerHTML = `
-            <svg class="icon folder-header-icon" viewBox="0 0 24 24">
-                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-            </svg>
-            <span class="folder-header-name">${rootName}</span>
-        `;
-        parentElement.appendChild(header);
+// Function to get relative path without root folder
+function getRelativePath(fullPath) {
+    const parts = fullPath.split('/');
+    if (parts.length > 1) {
+        return parts.slice(1).join('/');
     }
+    return fullPath;
+}
+
+// Function to display file structure
+function displayFileStructure(files, parentElement) {
     const container = document.createElement('div');
     container.className = 'folder-structure';
-    container.style.marginLeft = `${level * 20}px`;
-    for await (const entry of dirHandle.values()) {
+    
+    // Sort files by path for better display
+    const sortedFiles = [...files].sort((a, b) => 
+        getRelativePath(a.webkitRelativePath).localeCompare(getRelativePath(b.webkitRelativePath))
+    );
+    
+    sortedFiles.forEach(file => {
         const item = document.createElement('div');
         item.className = 'folder-item';
-        if (entry.kind === 'directory') {
-            item.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
-                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                </svg>
-                ${entry.name}
-            `;
-            const subDirHandle = await dirHandle.getDirectoryHandle(entry.name);
-            await displayFolderStructure(subDirHandle, item, level + 1);
-        } else {
-            item.innerHTML = `
-                <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
-                    <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/>
-                </svg>
-                ${entry.name}
-            `;
-        }
+        item.innerHTML = `
+            <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+                <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/>
+            </svg>
+            ${getRelativePath(file.webkitRelativePath)}
+        `;
         container.appendChild(item);
-    }
+    });
+    
     parentElement.appendChild(container);
 }
 
-// Handle folder selection
-async function pickFolder() {
-    // Check for File System Access API support
-    if (!window.showDirectoryPicker) {
-        showStatus('Your browser does not support the File System Access API. Please use the latest version of Chrome.', true);
+// Helper to detect if a file is text
+function isTextFile(fileName) {
+    const textExtensions = [
+        'html', 'js', 'css', 'json', 'txt', 'xml', 'svg', 'csv', 'md'
+    ];
+    const ext = fileName.split('.').pop().toLowerCase();
+    return textExtensions.includes(ext);
+}
+
+// Handle file upload
+async function handleFileUpload(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) {
+        showStatus('No files selected.', true);
         return;
     }
+
+    // Check if index.html exists
+    const hasIndexHtml = files.some(file => getRelativePath(file.webkitRelativePath).toLowerCase().endsWith('index.html'));
+    if (!hasIndexHtml) {
+        showStatus('No index.html found in the selected files. Please include all necessary WebGL build files.', true);
+        return;
+    }
+
     try {
         showStatus('loading');
-        // Show the directory picker to let the user select a folder
-        const dirHandle = await window.showDirectoryPicker();
-        if (!dirHandle) {
-            showStatus('No folder selected. Please select a Unity WebGL build folder.', true);
-            return;
-        }
-        // Check if the selected folder contains a Unity WebGL build (index.html)
-        const hasIndexHtml = await checkForIndexHtml(dirHandle);
-        if (!hasIndexHtml) {
-            showStatus('No index.html found in the selected folder. Please select a valid Unity WebGL build folder.', true);
-            return;
-        }
-        // Save the directory handle for later use
-        globalDirectoryHandle = dirHandle;
-        // Register this tab as having file access
-        registerAsFileAccessTab();
-        showStatus('Folder selected successfully! Click Play to launch the game.');
         
-        // Clear previous folder structure if any
+        // Initialize IndexedDB
+        await initDB();
+        
+        // Store files in IndexedDB with their relative paths
+        for (const file of files) {
+            const relativePath = getRelativePath(file.webkitRelativePath);
+            let content;
+            if (isTextFile(file.name)) {
+                // Read as text
+                content = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsText(file);
+                });
+            } else {
+                // Read as base64 data URL
+                content = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+            await storeFile(relativePath, content);
+        }
+
+        // Store file list with relative paths in session storage
+        sessionStorage.setItem('fileList', JSON.stringify(files.map(f => getRelativePath(f.webkitRelativePath))));
+        
+        showStatus('Files uploaded successfully! Click Play to launch the game.');
+        
+        // Clear previous file structure if any
         const existingStructure = document.querySelector('.folder-structure-container');
         if (existingStructure) {
             existingStructure.remove();
         }
         
-        // Create and display folder structure
+        // Create and display file structure
         const structureContainer = document.createElement('div');
         structureContainer.className = 'folder-structure-container';
         structureContainer.style.margin = '20px 0';
@@ -184,9 +231,9 @@ async function pickFolder() {
         structureContainer.style.borderRadius = '8px';
         structureContainer.style.maxHeight = '300px';
         structureContainer.style.overflow = 'auto';
-        // Get folder name
-        const folderName = dirHandle.name || 'Selected Folder';
-        await displayFolderStructure(dirHandle, structureContainer, 0, folderName);
+        
+        displayFileStructure(files, structureContainer);
+        
         // Insert the structure before the play button
         const playButton = document.getElementById('play-button');
         playButton.parentNode.insertBefore(structureContainer, playButton);
@@ -194,24 +241,22 @@ async function pickFolder() {
         // Show the Play button
         playButton.style.display = 'block';
     } catch (err) {
-        if (err && err.name === 'AbortError') {
-            showStatus('Folder selection was cancelled.', true);
-        } else {
-            console.error('Error:', err);
-            showStatus(err.message || 'An error occurred while processing the WebGL build.', true);
-        }
+        console.error('Error:', err);
+        showStatus(err.message || 'An error occurred while processing the files.', true);
     }
 }
 
 // Handle game launch
 function launchUnity() {
-    if (!globalDirectoryHandle) {
-        showStatus('Please select a folder first.', true);
+    const fileList = JSON.parse(sessionStorage.getItem('fileList'));
+    if (!fileList || !fileList.length) {
+        showStatus('Please upload files first.', true);
         return;
     }
+
     chrome.runtime.sendMessage({action: 'launchUnity'}, function(response) {
         if (response && response.success) {
-            showStatus('Unity WebGL game launched successfully! Keep this tab open to provide file access.');
+            showStatus('Unity WebGL game launched successfully!');
         } else {
             showStatus('Failed to launch Unity WebGL game.', true);
         }
@@ -219,64 +264,58 @@ function launchUnity() {
 }
 
 // Listen for file requests
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-    if (message.action === 'getFile' && globalDirectoryHandle) {
-        // Send immediate response to keep the message channel open
-        sendResponse({processing: true});
-        try {
-            const file = await getFileFromPath(globalDirectoryHandle, message.filePath);
-            const contentType = file.type || getMimeType(file.name);
-            // Determine if this is a text or binary file
-            const isText = contentType.startsWith('text/') || 
-                          contentType === 'application/javascript' || 
-                          contentType === 'application/json';
-            let content;
-            if (isText) {
-                content = await file.text();
-            } else {
-                // Convert binary to base64 for transmission
-                const arrayBuffer = await file.arrayBuffer();
-                const bytes = new Uint8Array(arrayBuffer);
-                let binary = '';
-                for (let i = 0; i < bytes.byteLength; i++) {
-                    binary += String.fromCharCode(bytes[i]);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'getFile') {
+        getFile(message.filePath)
+            .then(fileContent => {
+                if (!fileContent) {
+                    sendResponse({
+                        response: true,
+                        success: false,
+                        filePath: message.filePath,
+                        error: 'File not found'
+                    });
+                    return;
                 }
-                content = btoa(binary);
-            }
-            chrome.runtime.sendMessage({
-                response: true,
-                success: true,
-                filePath: message.filePath,
-                content: content,
-                contentType: contentType,
-                isText: isText
+
+                const contentType = getMimeType(message.filePath);
+                const isText = contentType.startsWith('text/') || 
+                              contentType === 'application/javascript' || 
+                              contentType === 'application/json';
+
+                sendResponse({
+                    response: true,
+                    success: true,
+                    filePath: message.filePath,
+                    content: fileContent,
+                    contentType: contentType,
+                    isText: isText
+                });
+            })
+            .catch(error => {
+                sendResponse({
+                    response: true,
+                    success: false,
+                    filePath: message.filePath,
+                    error: error.message
+                });
             });
-        } catch (error) {
-            chrome.runtime.sendMessage({
-                response: true,
-                success: false,
-                filePath: message.filePath,
-                error: error.message
-            });
-        }
         return true;
     }
 });
 
 // Add event listeners
-document.addEventListener('DOMContentLoaded', async function() {
-    document.getElementById('select-folder').addEventListener('click', pickFolder);
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.webkitdirectory = true;
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+
+    document.getElementById('select-folder').addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileUpload);
     document.getElementById('play-button').addEventListener('click', launchUnity);
-    // Check for File System Access API support on load
-    if (!window.showDirectoryPicker) {
-        showStatus('Your browser does not support the File System Access API. Please use the latest version of Chrome.', true);
-        document.getElementById('select-folder').disabled = true;
-        return;
-    }
-    if (globalDirectoryHandle) {
-        registerAsFileAccessTab();
-        document.getElementById('play-button').style.display = 'block';
-    }
+    
     // Inject Buy Me a Coffee button in top right
     injectBmcButton(document.body, { wrapperClass: 'bmc-topright' });
 });
