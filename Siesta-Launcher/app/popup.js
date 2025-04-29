@@ -1,16 +1,17 @@
-import { injectBmcButton } from './bmcButton.js';
+// Tab Management Module
+const TabManager = {
+  openPlayer() {
+    return chrome.tabs.create({ url: "app/player.html" });
+  },
+};
 
-document.addEventListener('DOMContentLoaded', function() {
-    const openPlayerButton = document.getElementById('open-player');
-    const container = document.querySelector('.container');
-    
-    openPlayerButton.addEventListener('click', function() {
-        // Show loading spinner
-        openPlayerButton.innerHTML = '<span class="loading"></span> Opening...';
-        openPlayerButton.disabled = true;
-        chrome.tabs.create({ url: 'app/player.html' });
-    });
+// Main Application Module
+const App = {
+  init() {
+    //search tabs with url of "app/player.html" if found, navigate to it
+    TabManager.openPlayer();
+  },
+};
 
-    // Inject Buy Me a Coffee button
-    injectBmcButton(container);
-});
+// Initialize the application
+document.addEventListener("DOMContentLoaded", () => App.init());

@@ -1,38 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unity WebGL Launcher</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="bmcButton.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="bmcButton.css" />
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>Unity WebGL Launcher</h1>
-            <div class="subtitle">Select your Unity WebGL build folder to launch</div>
+      <div class="header">
+        <h1>Unity WebGL Launcher</h1>
+        <div class="subtitle">
+          Select your Unity WebGL build folder to launch
         </div>
-        <button id="select-folder" class="button">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-            </svg>
-            Select WebGL Folder
-        </button>
-        <button id="play-button" class="button play-button" style="display: none;">
-            <svg class="icon" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-            </svg>
-            Play
-        </button>
-        <div id="status" class="status"></div>
-        <div class="storage-section">
-            <div id="storage-info" class="storage-info">
-                Storage Used: <span id="storage-used" class="storage-badge">Calculating...</span>
-            </div>
-            <button id="clear-storage" class="button clear-storage">Clear Storage</button>
+      </div>
+      <button id="select-folder" class="button">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path
+            d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"
+          />
+        </svg>
+        Select WebGL Folder
+      </button>
+      <button id="play-button" class="button play-button" style="display: none">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+        Play
+      </button>
+      <div id="status" class="status"></div>
+      <div class="storage-section">
+        <div id="storage-info" class="storage-info">
+          Storage Used:
+          <span id="storage-used" class="storage-badge">Calculating...</span>
         </div>
+        <button id="clear-storage" class="button clear-storage">
+          Clear Storage
+        </button>
+      </div>
     </div>
     <script type="module" src="./player.js"></script>
-</body>
-</html> 
+  </body>
+</html>
