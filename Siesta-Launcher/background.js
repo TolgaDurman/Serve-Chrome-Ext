@@ -224,21 +224,6 @@ function modifyHtmlContentWithRegex(htmlContent, filePath) {
     return modifiedContent;
 }
 
-// Clear all data from IndexedDB
-async function clearDB() {
-    if (!dbInitialized) {
-        await initDB();
-    }
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.clear();
-        
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
-}
-
 // Listen for messages from the popup or player pages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "launchUnity") {
@@ -259,13 +244,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.action === "storeFile") {
         storeFileInDB(message.fileName, message.content)
-            .then(() => sendResponse({ success: true }))
-            .catch(error => sendResponse({ success: false, error: error.message }));
-        return true;
-    }
-
-    if (message.action === "clearDB") {
-        clearDB()
             .then(() => sendResponse({ success: true }))
             .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
