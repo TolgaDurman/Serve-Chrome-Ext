@@ -259,6 +259,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Add event listeners
 document.addEventListener("DOMContentLoaded", function () {
+  chrome.runtime.sendMessage({ action: "clearDB" }, response => {
+    if (response.success) {
+        console.log("Database cleared successfully");
+    } else {
+        console.error("Failed to clear database:", response.error);
+    }
+});
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.webkitdirectory = true;
