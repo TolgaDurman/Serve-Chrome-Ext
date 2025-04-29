@@ -459,18 +459,32 @@ async function updateStorageDisplay() {
 }
 
 async function clearAllStorage() {
-  try {
-    chrome.runtime.sendMessage({ action: "clearDB" }, response => {
-        if (response.success) {
-            console.log("Database cleared successfully");
-            window.location.reload();
-        } else {
-            console.error("Failed to clear database:", response.error);
-            showStatus("Error clearing storage: " + response.error, true);
-        }
-    });
-  } catch (error) {
-    console.error("Error clearing storage:", error);
-    showStatus("Error clearing storage: " + error.message, true);
+    try {
+      // First clear any client-side storage we can access directly
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Then ask the service worker to clear all storage types
+      return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ action: "clearAllStorage" }, response => {
+          if (response && response.success) {
+            console.log("All storage cleared successfully");
+            // Create a small delay before reload to ensure clearing completes
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+            resolve(true);
+          } else {
+            const errorMsg = response ? response.error : "Unknown error";
+            console.error("Failed to clear storage:", errorMsg);
+            showStatus("Error clearing storage: " + errorMsg, true);
+            reject(new Error(errorMsg));
+          }
+        });
+      });
+    } catch (error) {
+      console.error("Error in clearAllStorage:", error);
+      showStatus("Error clearing storage: " + error.message, true);
+      throw error;
+    }
   }
-}
