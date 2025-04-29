@@ -2,15 +2,19 @@
 const DB_NAME = 'webglFilesDB';
 const STORE_NAME = 'files';
 let db = null;
+let dbInitialized = false;
 
 // Initialize IndexedDB
 async function initDB() {
+    if (dbInitialized) return;
+    
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, 1);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             db = request.result;
+            dbInitialized = true;
             resolve();
         };
         
@@ -23,14 +27,37 @@ async function initDB() {
     });
 }
 
+// Initialize database when service worker starts
+initDB().catch(error => {
+    console.error('Failed to initialize database:', error);
+});
+
 // Get file from IndexedDB
 async function getFileFromDB(filePath) {
+    if (!dbInitialized) {
+        await initDB();
+    }
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
         const request = store.get(filePath);
         
         request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Store file in IndexedDB
+async function storeFileInDB(fileName, content) {
+    if (!dbInitialized) {
+        await initDB();
+    }
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(content, fileName);
+        
+        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
     });
 }
@@ -204,6 +231,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             url: chrome.runtime.getURL("index.html"),
         });
         sendResponse({ success: true });
+        return true;
+    }
+
+    // Handle database operations
+    if (message.action === "getFile") {
+        getFileFromDB(message.filePath)
+            .then(content => sendResponse({ success: true, content }))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
+    if (message.action === "storeFile") {
+        storeFileInDB(message.fileName, message.content)
+            .then(() => sendResponse({ success: true }))
+            .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
     }
 
