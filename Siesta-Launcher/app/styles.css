@@ -99,52 +99,6 @@ body {
     box-shadow: var(--box-shadow);
 }
 
-/* Error Page Styles */
-.error-content {
-    text-align: center;
-    background-color: var(--card-background);
-    padding: 30px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-}
-
-.error-icon {
-    font-size: 48px;
-    margin-bottom: 20px;
-}
-
-.error-message {
-    color: var(--error-color);
-    font-size: 18px;
-    margin-bottom: 20px;
-}
-
-.troubleshooting {
-    text-align: left;
-    margin: 20px 0;
-    padding: 15px;
-    background-color: #fff3f3;
-    border-radius: var(--border-radius);
-}
-
-.troubleshooting h3 {
-    margin-top: 0;
-    color: var(--error-color);
-}
-
-.troubleshooting ul {
-    padding-left: 20px;
-    margin: 10px 0;
-}
-
-.troubleshooting li {
-    margin-bottom: 8px;
-}
-
-.actions {
-    margin-top: 20px;
-}
-
 /* Responsive Design */
 @media (max-width: 480px) {
     .container {

@@ -230,9 +230,9 @@ const UIManager = {
 
   async updateStorageDisplay() {
     const usage = await this.getStorageUsage();
-    const storageInfo = document.getElementById("storage-info");
-    if (storageInfo) {
-      storageInfo.textContent = `Storage used: ${this.formatBytes(usage)}`;
+    const storageBadge = document.getElementById("storage-used");
+    if (storageBadge) {
+      storageBadge.textContent = this.formatBytes(usage);
     }
   },
 
