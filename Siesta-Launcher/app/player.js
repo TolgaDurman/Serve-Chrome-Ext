@@ -239,31 +239,33 @@ async function handleFileUpload(event) {
 
     showStatus("Files uploaded successfully! Click Play to launch the game.");
 
-    // Clear previous file structure if any
-    const existingStructure = document.querySelector(
-      ".folder-structure-container"
-    );
-    if (existingStructure) {
-      existingStructure.remove();
+    // Update storage display
+    await updateStorageDisplay();
+
+    // Get or create folder structure container
+    let structureContainer = document.querySelector(".folder-structure-container");
+    if (!structureContainer) {
+      structureContainer = document.createElement("div");
+      structureContainer.className = "folder-structure-container";
+      structureContainer.style.margin = "20px 0";
+      structureContainer.style.padding = "15px";
+      structureContainer.style.border = "1px solid #ccc";
+      structureContainer.style.borderRadius = "8px";
+      structureContainer.style.maxHeight = "300px";
+      structureContainer.style.overflow = "auto";
+      
+      // Insert before play button
+      const playButton = document.getElementById("play-button");
+      playButton.parentNode.insertBefore(structureContainer, playButton);
     }
 
-    // Create and display file structure
-    const structureContainer = document.createElement("div");
-    structureContainer.className = "folder-structure-container";
-    structureContainer.style.margin = "20px 0";
-    structureContainer.style.padding = "15px";
-    structureContainer.style.border = "1px solid #ccc";
-    structureContainer.style.borderRadius = "8px";
-    structureContainer.style.maxHeight = "300px";
-    structureContainer.style.overflow = "auto";
-
+    // Clear existing content and display new structure
+    structureContainer.innerHTML = '';
     displayFileStructure(files, structureContainer);
-
-    // Insert the structure before the play button
-    const playButton = document.getElementById("play-button");
-    playButton.parentNode.insertBefore(structureContainer, playButton);
+    structureContainer.style.display = "block";
 
     // Show the Play button
+    const playButton = document.getElementById("play-button");
     playButton.style.display = "block";
   } catch (err) {
     console.error("Error:", err);
@@ -349,4 +351,126 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Inject Buy Me a Coffee button in top right
   injectBmcButton(document.body, { wrapperClass: "bmc-topright" });
+
+  updateStorageDisplay();
+  document.getElementById("clear-storage").addEventListener("click", async () => {
+    await clearAllStorage();
+    //remove list of items and play button
+    const playButton = document.getElementById("play-button");
+    playButton.parentNode.removeChild(playButton);
+    const structureContainer = document.querySelector(
+      ".folder-structure-container"
+    );
+    if (structureContainer) {
+      structureContainer.remove();
+    }
+    showStatus("All storage cleared.");
+  });
 });
+
+// --- Storage Usage and Clear Logic ---
+async function getStorageUsage() {
+  // Try StorageManager API (best effort, not all browsers/extensions support it)
+  if (navigator.storage && navigator.storage.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      return estimate.usage || 0;
+    } catch (e) {}
+  }
+  // Fallback: sum up local/session storage, cookies, and IndexedDB (approximate)
+  let total = 0;
+  // Local Storage
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    total += ((localStorage.getItem(key) || '').length * 2);
+  }
+  // Session Storage
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    total += ((sessionStorage.getItem(key) || '').length * 2);
+  }
+  // Cookies
+  total += (document.cookie || '').length;
+  // IndexedDB (estimate: count all objects in all DBs)
+  if (window.indexedDB && indexedDB.databases) {
+    try {
+      const dbs = await indexedDB.databases();
+      for (const dbInfo of dbs) {
+        const req = indexedDB.open(dbInfo.name);
+        await new Promise((resolve) => {
+          req.onsuccess = () => {
+            const db = req.result;
+            let size = 0;
+            for (const storeName of db.objectStoreNames) {
+              const tx = db.transaction(storeName, 'readonly');
+              const store = tx.objectStore(storeName);
+              const countReq = store.getAll();
+              countReq.onsuccess = () => {
+                for (const item of countReq.result) {
+                  if (typeof item === 'string') size += item.length * 2;
+                  else if (item instanceof ArrayBuffer) size += item.byteLength;
+                  else if (typeof item === 'object') size += JSON.stringify(item).length * 2;
+                }
+                db.close();
+                resolve();
+              };
+              countReq.onerror = resolve;
+            }
+            total += size;
+          };
+          req.onerror = resolve;
+        });
+      }
+    } catch (e) {}
+  }
+  // Cache Storage
+  if (window.caches && caches.keys) {
+    try {
+      const keys = await caches.keys();
+      for (const key of keys) {
+        const cache = await caches.open(key);
+        const requests = await cache.keys();
+        for (const req of requests) {
+          const res = await cache.match(req);
+          if (res) {
+            const buf = await res.arrayBuffer();
+            total += buf.byteLength;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  return total;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+async function updateStorageDisplay() {
+  const el = document.getElementById('storage-used');
+  if (!el) return;
+  el.textContent = 'Calculating...';
+  const usage = await getStorageUsage();
+  el.textContent = formatBytes(usage);
+}
+
+async function clearAllStorage() {
+  try {
+    chrome.runtime.sendMessage({ action: "clearDB" }, response => {
+        if (response.success) {
+            console.log("Database cleared successfully");
+            window.location.reload();
+        } else {
+            console.error("Failed to clear database:", response.error);
+            showStatus("Error clearing storage: " + response.error, true);
+        }
+    });
+  } catch (error) {
+    console.error("Error clearing storage:", error);
+    showStatus("Error clearing storage: " + error.message, true);
+  }
+}
