@@ -3,7 +3,7 @@ name: Auto Release on Version Change
 on:
   push:
     paths:
-      - 'manifest.json'
+      - 'Siesta-Launcher/manifest.json'
 
 jobs:
   release:
