@@ -1,21 +1,19 @@
 # Unity WebGL Launcher Chrome Extension
 
-A Chrome extension that enables local execution of Unity WebGL builds by providing folder access and virtual file serving.
+A Chrome extension that enables local execution of Unity WebGL builds by virtual file serving.
 
 ![Preview](https://github.com/user-attachments/assets/9276f664-3d0d-4ce1-a4a2-824a69bdad91)
 
 ## Features
 
-- 🚀 **Local Unity WebGL Execution**: Run Unity WebGL builds directly from your local file system
+- 🚀 **Local Unity WebGL Execution**: Run Unity WebGL builds directly from your Chrome browser
 - 📂 **Folder Selection**: Use the Chrome File System Access API to select WebGL build folders
 - 🌐 **Virtual File Server**: Dynamically serves game files while maintaining security policies
-- 🔄 **Real-time Updates**: Automatically detects changes in selected folders
 - 🛠 **Error Handling**: Friendly error messages and troubleshooting guidance
 - 📁 **Folder Structure Visualization**: Preview selected folder contents before launch
 
 ## Requirements
 
-- Google Chrome 86+ (or Chromium-based browsers supporting File System Access API)
 - Unity WebGL builds containing `index.html`
 - Extension permissions enabled for file system access
 
@@ -35,7 +33,6 @@ A Chrome extension that enables local execution of Unity WebGL builds by providi
    - Click **Select WebGL Folder** and choose your build directory
    - Verify folder structure appears correctly
    - Click **Play** to launch the game
-4. Keep the launcher tab open during gameplay for file access
 
 ## Troubleshooting
 
@@ -43,7 +40,7 @@ A Chrome extension that enables local execution of Unity WebGL builds by providi
 - 🚫 "Browser not supported": Use latest Chrome version
 - 🔍 "index.html not found": Verify your Unity build output
 - 🔐 Permission errors: Allow file access when prompted
-- 🕒 Timeout issues: Ensure large assets are properly cached
+- 🕒 Timeout issues: Ensure large assets are properly indexed
 
 **Tips:**
 - First-run may require explicit permission grants
@@ -53,7 +50,6 @@ A Chrome extension that enables local execution of Unity WebGL builds by providi
 ## Technical Details
 
 **Key Components:**
-- File System Access API integration
 - Service Worker-based virtual file system
 - DOM manipulation protection through script extraction
 - Cross-origin isolation headers
@@ -72,4 +68,4 @@ player.js
 └── File content processing
 
 popup.js
-└── Extension UI launcher
+└── Extension launcher
