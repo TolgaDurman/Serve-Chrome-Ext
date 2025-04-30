@@ -54,14 +54,19 @@ jobs:
         id: get_commit
         run: |
           COMMIT_BODY=$(git log -1 --pretty=%B)
+          COMMIT_SUMMARY=$(git log -1 --pretty=%s)
           echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "# $COMMIT_SUMMARY" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
           echo "$COMMIT_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.current.outputs.CURRENT_VERSION }}
+          tag_name: ${{ steps.current.outputs.CURRENT_VERSION }}
+          name: v${{ steps.current.outputs.CURRENT_VERSION }}
           body: ${{ steps.get_commit.outputs.BODY }}
           files: dist/Siesta-Launcher-v${{ steps.current.outputs.CURRENT_VERSION }}.zip
         env:
