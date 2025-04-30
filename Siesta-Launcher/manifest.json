@@ -3,7 +3,7 @@
   "name": "Siesta Launcher",
   "version": "1.2",
   "description": "Launches Unity WebGL builds on Chrome",
-  "permissions": ["activeTab", "storage", "tabs", "scripting", "browsingData"],
+  "permissions": ["storage", "tabs"],
   "action": {
     "default_popup": "app/popup.html",
     "default_icon": {
