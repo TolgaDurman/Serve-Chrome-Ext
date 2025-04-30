@@ -50,19 +50,18 @@ jobs:
           mkdir -p dist
           zip -r "dist/Siesta-Launcher-v${{ steps.current.outputs.CURRENT_VERSION }}.zip" Siesta-Launcher
 
-      - name: Get Commit Message
+      - name: Get Commit Body Only
         id: get_commit
         run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          COMMIT_MSG_ESCAPED=$(echo "$COMMIT_MSG" | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "COMMIT_MSG=$COMMIT_MSG_ESCAPED" >> $GITHUB_OUTPUT
+          COMMIT_BODY=$(git log -1 --pretty=%b | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "BODY=$COMMIT_BODY" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.current.outputs.CURRENT_VERSION }}
-          name: Release ${{ steps.current.outputs.CURRENT_VERSION }}
-          body: ${{ steps.get_commit.outputs.COMMIT_MSG }}
+          body: ${{ steps.get_commit.outputs.BODY }}
           files: dist/Siesta-Launcher-v${{ steps.current.outputs.CURRENT_VERSION }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
