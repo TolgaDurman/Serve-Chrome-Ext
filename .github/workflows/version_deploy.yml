@@ -54,12 +54,8 @@ jobs:
         id: get_commit
         run: |
           COMMIT_BODY=$(git log -1 --pretty=%B)
-          COMMIT_SUMMARY=$(git log -1 --pretty=%s)
           echo "BODY<<EOF" >> $GITHUB_OUTPUT
-          echo "# $COMMIT_SUMMARY" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "$COMMIT_BODY" >> $GITHUB_OUTPUT
+          echo "#$COMMIT_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
