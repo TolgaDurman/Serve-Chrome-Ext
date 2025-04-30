@@ -54,7 +54,8 @@ jobs:
         id: get_commit
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "COMMIT_MSG=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          COMMIT_MSG_ESCAPED=$(echo "$COMMIT_MSG" | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "COMMIT_MSG=$COMMIT_MSG_ESCAPED" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
