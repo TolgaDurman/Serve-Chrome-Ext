@@ -53,8 +53,10 @@ jobs:
       - name: Get Commit Body Only
         id: get_commit
         run: |
-          COMMIT_BODY=$(git log -1 --pretty=%b | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "BODY=$COMMIT_BODY" >> $GITHUB_OUTPUT
+          COMMIT_BODY=$(git log -1 --pretty=%B)
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMIT_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
